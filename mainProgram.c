@@ -7,6 +7,13 @@
 #include<netinet/ip.h>	//Provides declarations for ip header
 #include<sys/socket.h>
 #include<arpa/inet.h>
+#include <unistd.h>
+#include <ncurses.h>
+#include <form.h>
+#include <assert.h>
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
 
 void ProcessPacket(unsigned char* , int);
 void print_ip_header(unsigned char* , int);
@@ -19,6 +26,9 @@ int sock_raw;
 FILE *logfile;
 int tcp=0,udp=0,icmp=0,others=0,igmp=0,total=0,i,j;
 struct sockaddr_in source,dest;
+static FORM *form;
+static FIELD *fields[5];
+static WINDOW *win_body, *win_form;
 
 int main()
 {
@@ -38,19 +48,34 @@ int main()
 		printf("Socket Error\n");
 		return 1;
 	}
-	while(1)
-	{
-		saddr_size = sizeof saddr;
-		//Receive a packet
-		data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
-		if(data_size <0 )
+	int ch;
+	initscr();
+	noecho();
+	cbreak();
+	keypad(stdscr, TRUE);
+	win_body = newwin(24, 80, 0, 0);
+	assert(win_body != NULL);
+	box(win_body, 0, 0);
+	win_form = derwin(win_body, 20, 78, 3, 1);
+	assert(win_form != NULL);
+	box(win_form, 0, 0);
+	scrollok(win_form, TRUE);
+		while(1)
 		{
-			printf("Recvfrom error , failed to get packets\n");
-			return 1;
+			refresh();
+			wrefresh(win_body);
+			wrefresh(win_form);
+			saddr_size = sizeof saddr;
+			//Receive a packet
+			data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
+			if(data_size <0 )
+			{
+				printf("Recvfrom error , failed to get packets\n");
+				return 1;
+			}
+			//Now process the packet
+			ProcessPacket(buffer , data_size);
 		}
-		//Now process the packet
-		ProcessPacket(buffer , data_size);
-	}
 	close(sock_raw);
 	printf("Finished");
 	return 0;
@@ -86,7 +111,7 @@ void ProcessPacket(unsigned char* buffer, int size)
 			++others;
 			break;
 	}
-	printf("TCP : %d   UDP : %d   ICMP : %d   IGMP : %d   Others : %d   Total : %d\r",tcp,udp,icmp,igmp,others,total);
+	mvwprintw(win_form, 1, 2, "TCP : %d   UDP : %d   ICMP : %d   IGMP : %d   Others : %d   Total : %d\r",tcp,udp,icmp,igmp,others,total);
 }
 
 void print_ip_header(unsigned char* Buffer, int Size)

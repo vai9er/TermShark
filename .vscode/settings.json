@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "ctype.h": "c",
+        "ncurses.h": "c",
+        "string.h": "c"
+    }
+}
