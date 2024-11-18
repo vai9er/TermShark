@@ -58,7 +58,7 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    //keep track of the start time because wireshark calculates time as the current time since the program is executed
+    //keep track of the start time because wireshark originally does elapsed time
     struct timeval start_time;
     //gettimeofday will fill in start_time with the exact time in seconds.microseconds
     gettimeofday(&start_time, NULL);
@@ -151,8 +151,7 @@ void print_packet_summary(const PacketInfo *pkt_info, const struct timeval *star
            pkt_info->size);
 }
 
-double get_elapsed_time(const struct timeval *start_time, const struct timeval *current_time) {
-    double elapsed = (current_time->tv_sec - start_time->tv_sec) +
-                     (current_time->tv_usec - start_time->tv_usec) / 1e6;
-    return elapsed;
+double get_elapsed_time(const struct timeval *start_time, const struct timeval *current_time) { 
+    //1e6 converts milliseconds to seconds
+    return (current_time->tv_sec - start_time->tv_sec) + (current_time->tv_usec - start_time->tv_usec) / 1e6;
 }
