@@ -20,6 +20,7 @@
 #include <netinet/udp.h>      // UDP header
 #include <netinet/tcp.h>      // TCP header
 #include <ncurses.h>
+#include <inttypes.h>
 
 typedef enum {
     PROTOCOL_ICMP = 1,
@@ -35,6 +36,11 @@ typedef struct {
     ProtocolType protocol;
     char src_ip[INET_ADDRSTRLEN];
     char dest_ip[INET_ADDRSTRLEN];
+    uint32_t seq;            // Sequence number
+    uint32_t ack_seq;        // Acknowledgement number
+    uint16_t src_port;
+    uint16_t dest_port;
+    uint8_t tcp_flags;
     int size;
 } PacketInfo;
 
@@ -48,6 +54,8 @@ void print_packets(WINDOW *win, const struct timeval *start_time);
 void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no, const struct timeval *start_time);
 double get_elapsed_time(const struct timeval *start_time, const struct timeval *current_time);
 const char* get_protocol_str(ProtocolType protocol);
+void tcp_trace(PacketInfo *packet, WINDOW *win, const struct timeval *start_time);
+int is_same_tcp_stream(PacketInfo *p1, PacketInfo *p2);
 
 int main() {
     unsigned char *buffer = (unsigned char *) malloc(65536);
@@ -125,6 +133,11 @@ int main() {
             } else if (ch == 'q' || ch == 'Q') {
                 // exit on 'q' key (we can change later)
                 break;
+            } else if (ch == 't' || ch == 'T') {
+                if(packet_list[cursor_position]->protocol == PROTOCOL_TCP){
+                    tcp_trace(packet_list[cursor_position], packet_win, &start_time);
+                }
+                print_packets(packet_win, &start_time);
             }
         }
 
@@ -155,10 +168,17 @@ int main() {
 }
 
 void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no, const struct timeval *start_time) {
-    
+
     struct iphdr *ip_header = (struct iphdr *)(buffer + sizeof(struct ethhdr));
+    unsigned short iphdrlen = ip_header->ihl * 4;
 
     PacketInfo *pkt_info = malloc(sizeof(PacketInfo));
+    pkt_info->ack_seq = -1;
+    pkt_info->seq = -1;
+    pkt_info->src_port = 0;
+    pkt_info->dest_port = 0;
+    pkt_info->tcp_flags = 0;
+
     if (!pkt_info) {
         fprintf(stderr, "Failed to allocate memory for PacketInfo.\n");
         return;
@@ -180,10 +200,16 @@ void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no,
         case PROTOCOL_IGMP:
             pkt_info->protocol = PROTOCOL_IGMP;
             break;
-        case PROTOCOL_TCP:
+        case PROTOCOL_TCP: {
             pkt_info->protocol = PROTOCOL_TCP;
+            struct tcphdr *tcp_header = (struct tcphdr *)(buffer + sizeof(struct ethhdr) + iphdrlen);
+            pkt_info->seq = ntohl(tcp_header->th_seq);
+            pkt_info->ack_seq = ntohl(tcp_header->th_ack);
+            pkt_info->src_port = ntohs(tcp_header->source);
+            pkt_info->dest_port = ntohs(tcp_header->dest);
+            pkt_info->tcp_flags = tcp_header->th_flags;
             break;
-        case PROTOCOL_UDP:
+        }case PROTOCOL_UDP:
             pkt_info->protocol = PROTOCOL_UDP;
             break;
         default:
@@ -299,5 +325,139 @@ const char* get_protocol_str(ProtocolType protocol) {
             return "UDP";
         default:
             return "OTHER";
+    }
+}
+
+int is_same_tcp_stream_forward(PacketInfo *p1, PacketInfo *p2) {
+    if (p1->protocol != PROTOCOL_TCP || p2->protocol != PROTOCOL_TCP)
+        return 0;
+    if (((strcmp(p1->src_ip, p2->src_ip) == 0 && p1->src_port == p2->src_port &&
+          strcmp(p1->dest_ip, p2->dest_ip) == 0 && p1->dest_port == p2->dest_port &&
+          p1->seq <= p2->seq)
+        ||
+         (strcmp(p1->src_ip, p2->dest_ip) == 0 && p1->src_port == p2->dest_port &&
+          strcmp(p1->dest_ip, p2->src_ip) == 0 && p1->dest_port == p2->src_port &&
+          p1->ack_seq <= p2->ack_seq)))
+    {
+        return 1;
+    }
+    return 0;
+}
+
+int is_same_tcp_stream_back(PacketInfo *p1, PacketInfo *p2) {
+    if (p1->protocol != PROTOCOL_TCP || p2->protocol != PROTOCOL_TCP)
+        return 0;
+    if (((strcmp(p1->src_ip, p2->src_ip) == 0 && p1->src_port == p2->src_port &&
+          strcmp(p1->dest_ip, p2->dest_ip) == 0 && p1->dest_port == p2->dest_port &&
+          p1->seq >= p2->seq)
+        ||
+         (strcmp(p1->src_ip, p2->dest_ip) == 0 && p1->src_port == p2->dest_port &&
+          strcmp(p1->dest_ip, p2->src_ip) == 0 && p1->dest_port == p2->src_port &&
+          p1->ack_seq >= p2->ack_seq)))
+    {
+        return 1;
+    }
+    return 0;
+}
+
+
+void tcp_trace(PacketInfo *packet, WINDOW *win, const struct timeval *start_time){
+    PacketInfo *stream_packets[MAX_PACKETS];
+    int stream_packet_count = 0;
+    stream_packets[0] = packet_list[cursor_position];
+
+    for (int i = cursor_position-1; i >= 0; i--) {
+        if (is_same_tcp_stream_back(packet, packet_list[i])) {
+            for(int j = stream_packet_count; j >= 0; j--){
+                stream_packets[j+1] = stream_packets[j];
+            }
+            stream_packets[0] = packet_list[i];
+            stream_packet_count++;
+            if(packet_list[i]->tcp_flags & TH_SYN){
+                break;
+            }
+        }
+    }
+
+    for (int i = cursor_position; i < packet_count; ++i) {
+        if (is_same_tcp_stream_forward(packet, packet_list[i])) {
+            stream_packets[stream_packet_count++] = packet_list[i];
+            if(packet_list[i]->tcp_flags & TH_FIN){
+                break;
+            }
+        }
+    }
+
+    int tcp_cursor_position = 0;
+    while (1) {
+        int ch = getch();
+        if (ch == KEY_UP) {
+            if (tcp_cursor_position > 0) {
+                tcp_cursor_position--;
+            }
+        } else if (ch == KEY_DOWN) {
+            if (tcp_cursor_position < stream_packet_count -1) {
+                tcp_cursor_position++;
+            }
+        } else if (ch == 'q' || ch == 'Q') {
+            break;  
+        }
+        werase(win);  
+        box(win, 0, 0); 
+
+        wattron(win, COLOR_PAIR(1) | A_BOLD);
+        mvwprintw(win, 1, 1, "%5s %10s %-7s %-15s %-15s %7s",
+                    "No.", "Time", "Proto", "Source", "Destination", "Length");
+        wattroff(win, COLOR_PAIR(1) | A_BOLD);
+
+        int max_y, max_x;
+        getmaxyx(win, max_y, max_x);
+
+        int start_line = 2;  
+        int lines_per_page = max_y - start_line - 1;
+
+        int first_packet = 0;
+        int last_packet = stream_packet_count;
+
+        if (tcp_cursor_position >= first_packet + lines_per_page) {
+            first_packet = tcp_cursor_position - lines_per_page + 1;
+        }
+        if (tcp_cursor_position < first_packet) {
+            first_packet = tcp_cursor_position;
+        }
+        last_packet = first_packet + lines_per_page;
+        if (last_packet > stream_packet_count) {
+            last_packet = stream_packet_count;
+        }
+
+        for (int i = first_packet; i < last_packet; ++i) {
+            PacketInfo *pkt_info = stream_packets[i];
+            double elapsed_time = get_elapsed_time(start_time, &pkt_info->timestamp);
+
+            int color_pair = 2;
+
+            if (i == tcp_cursor_position) {
+                wattron(win, A_REVERSE); 
+            }
+
+            wattron(win, COLOR_PAIR(color_pair));
+            mvwprintw(win, start_line + i - first_packet, 1, "%5d %10.6f %-7s %-15s %-15s %7d %" PRIu32 " %" PRIu32 " %" PRIu8,
+                      pkt_info->packet_no,
+                      elapsed_time,
+                      get_protocol_str(pkt_info->protocol),
+                      pkt_info->src_ip,
+                      pkt_info->dest_ip,
+                      pkt_info->size,
+                      pkt_info->seq,
+                      pkt_info->ack_seq,
+                      pkt_info->tcp_flags);
+                      //pkt_info->tcp_flags);
+            wattroff(win, COLOR_PAIR(color_pair));
+
+            if (i == tcp_cursor_position) {
+                wattroff(win, A_REVERSE);
+            }
+        }
+        wrefresh(win);
     }
 }
