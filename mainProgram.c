@@ -49,6 +49,7 @@ typedef struct {
 PacketInfo *packet_list[MAX_PACKETS];
 int packet_count = 0;
 int cursor_position = 0;  // index of the currently selected packet
+int paused = 0;
 
 void print_packets(WINDOW *win, const struct timeval *start_time);
 void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no, const struct timeval *start_time);
@@ -138,24 +139,53 @@ int main() {
                     tcp_trace(packet_list[cursor_position], packet_win, &start_time);
                 }
                 print_packets(packet_win, &start_time);
+            } else if (ch == 18){
+                paused = !paused; // toggle paused state
+				if (paused) {
+					mvprintw(0, 0, "Paused. Press Ctrl+R to resume.");
+                    
+				} else {
+					mvprintw(0, 0, "Listening...                     ");
+                    for (int i = 0; i < packet_count; ++i) {
+						free(packet_list[i]);
+					}
+					packet_count = 0;
+					packet_no = 0;
+                    gettimeofday(&start_time, NULL);
+                    werase(packet_win);
+					box(packet_win, 0, 0);
+					wrefresh(packet_win);
+				}
+				refresh();
+
             }
+            
         }
 
+        // if (paused) {
+		// 	usleep(1000);  // sleep briefly to avoid busy-waiting
+		// 	continue;
+		// }
+
         // receive a raw ethernet frame
-        int data_size = recvfrom(sock_raw, buffer, 65536, MSG_DONTWAIT, &saddr, (socklen_t *)&saddr_size);
-        if (data_size < 0) {
-            if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                // no data available, continue
-                usleep(1000);  // sleep for 1ms to avoid busy-waiting
-                continue;
-            } else {
-                perror("Recvfrom Error");
-                break;
+        
+        if(!paused){
+            int data_size = recvfrom(sock_raw, buffer, 65536, MSG_DONTWAIT, &saddr, (socklen_t *)&saddr_size);
+            if (data_size < 0) {
+                if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                    // no data available, continue
+                    usleep(1000);  // sleep for 1ms to avoid busy-waiting
+                    continue;
+                } else {
+                    perror("Recvfrom Error");
+                    break;
+                }
             }
+            // every packet gets a unique number
+            packet_no++;
+            process_packet(packet_win, buffer, data_size, packet_no, &start_time);
         }
-        // every packet gets a unique number
-        packet_no++;
-        process_packet(packet_win, buffer, data_size, packet_no, &start_time);
+        
     }
 
     close(sock_raw);
