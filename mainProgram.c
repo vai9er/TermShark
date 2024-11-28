@@ -1,3 +1,7 @@
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif // _DEFAULT_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,7 +64,7 @@ void tcp_trace(PacketInfo *packet, WINDOW *win, const struct timeval *start_time
 int is_same_tcp_stream(PacketInfo *p1, PacketInfo *p2);
 void display_packet(WINDOW *win, PacketInfo *info);
 
-int main() {
+int main(int argc, char** argv) {
     unsigned char *buffer = (unsigned char *) malloc(65536);
 
     if (!buffer) {
@@ -93,14 +97,14 @@ int main() {
     int win_starty = 1; // start at line 1
     int win_startx = 1;
 
-    int info_win_width = max_x/2;
+    int info_win_width = max_x/4;
     int info_win_height = win_height;
-    int info_win_x = max_x/2;
+    int info_win_x = win_width/2 + 4;
     int info_win_y = 1;
 
     WINDOW *info_win = newwin(info_win_height, info_win_width, info_win_y, info_win_x);
     box(info_win, 0, 0);
-    WINDOW *packet_win = newwin(win_height, max_x*2/3, win_starty, win_startx);
+    WINDOW *packet_win = newwin(win_height, win_width/2, win_starty, win_startx);
     box(packet_win, 0, 0); // draw border
     scrollok(packet_win, TRUE); // allow scrolling
     wrefresh(packet_win);
@@ -111,6 +115,13 @@ int main() {
         perror("Socket Error");
         free(buffer);
         endwin();
+        return EXIT_FAILURE;
+    }
+
+    if (setsockopt(sock_raw , SOL_SOCKET , SO_BINDTODEVICE , "eth0" , strlen("eth0")+ 1) < 0) {
+        close(sock_raw);
+        endwin();
+        perror("Binding socket to interface failed");
         return EXIT_FAILURE;
     }
 
@@ -140,6 +151,8 @@ int main() {
                     cursor_position++;
                     print_packets(packet_win, &start_time);
                 }
+            } else if (ch == KEY_RIGHT) {
+                display_packet(info_win, packet_list[cursor_position]);
             } else if (ch == 'p' || ch == 'P') {
                 display_packet(packet_win, packet_list[cursor_position]);
             } else if (ch == 'q' || ch == 'Q') {
@@ -210,14 +223,102 @@ int main() {
 }
 
 void display_packet(WINDOW *win, PacketInfo *info) {
-    struct ethhdr *eth_header = (struct ethhdr *)(info->buf);
+    struct ether_header *eth_header = (struct ether_header *)(info->buf);
+    int current_row = 0;
+    int max_y, max_x;
+    getmaxyx(win, max_y, max_x);
+    const int ethernet_fields = 4;
+    char ethernet_format[ethernet_fields][100];
+    int i = 0, j = 0;
+    sprintf(ethernet_format[i++], "Ethernet Header");
+    sprintf(ethernet_format[i++], "%-20s %.2x:%.2x:%.2x:%.2x:%.2x:%.2x", "Source", eth_header->ether_shost[0], eth_header->ether_shost[1], eth_header->ether_shost[2], eth_header->ether_shost[3], eth_header->ether_shost[4], eth_header->ether_shost[5]);
+    sprintf(ethernet_format[i++], "%-20s %.2x:%.2x:%.2x:%.2x:%.2x:%.2x", "Destination", eth_header->ether_dhost[0], eth_header->ether_dhost[1], eth_header->ether_dhost[2], eth_header->ether_dhost[3], eth_header->ether_dhost[4], eth_header->ether_dhost[5]);
+    sprintf(ethernet_format[i++], "%-20s %u", "Protocol", eth_header->ether_type);
+
+    struct iphdr *ip_header = (struct iphdr *)(info->buf + sizeof(struct ether_header));
+    struct sockaddr_in source,dest;
+
+    source.sin_addr.s_addr = ip_header->saddr;
+    dest.sin_addr.s_addr = ip_header->daddr;
+
+    const int ip_fields = 12;
+    char ipv4_format[ip_fields][100];
+    i = 0;
+    sprintf(ipv4_format[i++], "IP Header");
+    sprintf(ipv4_format[i++], "%-20s %d", "Version", ip_header->version);
+    sprintf(ipv4_format[i++], "%-20s %d", "Header Length", ip_header->ihl);
+    sprintf(ipv4_format[i++], "%-20s %d", "Type of Service", ip_header->tos);
+    sprintf(ipv4_format[i++], "%-20s %d", "Total Length", ip_header->tot_len);
+    sprintf(ipv4_format[i++], "%-20s %d", "Identification", ip_header->id);
+    sprintf(ipv4_format[i++], "%-20s %d", "Fragment Offset", ip_header->frag_off);
+    sprintf(ipv4_format[i++], "%-20s %d", "TTL", ip_header->ttl);
+    sprintf(ipv4_format[i++], "%-20s %d", "Protocol", ip_header->protocol);
+    sprintf(ipv4_format[i++], "%-20s %d", "Checksum", ip_header->check);
+    sprintf(ipv4_format[i++], "%-20s %s", "Source IP ", inet_ntoa(source.sin_addr));
+    sprintf(ipv4_format[i++], "%-20s %s", "Destination IP", inet_ntoa(dest.sin_addr));
+
+
+    const int tcp_fields = 16;
+    struct tcphdr *tcp_header = (struct tcphdr *)(info->buf + sizeof(struct ether_header) + ip_header->ihl*4);
+    char tcp_format[tcp_fields][100];
+
+    i = 0;
+    sprintf(tcp_format[i++], "TCP Header");
+    sprintf(tcp_format[i++], "%-20s %d", "Source Port", ntohs(tcp_header->source));
+    sprintf(tcp_format[i++], "%-20s %d", "Destination Port", ntohs(tcp_header->dest));
+    sprintf(tcp_format[i++], "%-20s %u", "Sequence Number", ntohl(tcp_header->seq));
+    sprintf(tcp_format[i++], "%-20s %u", "Acknowledge Number", ntohl(tcp_header->ack_seq));
+    sprintf(tcp_format[i++], "%-20s %d", "Data Offset", ntohl(tcp_header->doff));
+    sprintf(tcp_format[i++], "%-20s %d", "Urgent Flag", tcp_header->urg);
+    sprintf(tcp_format[i++], "%-20s %d", "Acknowledgement Flag", tcp_header->ack);
+    sprintf(tcp_format[i++], "%-20s %d", "Push Flag", tcp_header->psh);
+    sprintf(tcp_format[i++], "%-20s %d", "Reset Flag", tcp_header->rst);
+    sprintf(tcp_format[i++], "%-20s %d", "Sync Flag", tcp_header->syn);
+    sprintf(tcp_format[i++], "%-20s %d", "Finish Flag", tcp_header->fin);
+    sprintf(tcp_format[i++], "%-20s %d", "Finish Flag", tcp_header->fin);
+    sprintf(tcp_format[i++], "%-20s %d", "Window", ntohs(tcp_header->window));
+    sprintf(tcp_format[i++], "%-20s %d", "Checksum", ntohs(tcp_header->check));
+    sprintf(tcp_format[i++], "%-20s %d", "Urgent Pointer", tcp_header->urg_ptr);
+
+    char (*fields[])[100] = {ethernet_format, ipv4_format, tcp_format};
+    #define num_headers 3
+    int sizes[num_headers] = { ethernet_fields, ip_fields, tcp_fields };
+    int total_fields = ethernet_fields + ip_fields + tcp_fields;
     while (1) {
-        getch();
+        int key = getch();
+        if (key == KEY_DOWN) {
+            if (current_row < total_fields-1) current_row++;
+        } else if (key == KEY_UP){
+            if (current_row > 0) current_row--;
+        } else if (key == 'q' || key == 'Q' || key == KEY_LEFT) {
+            werase(win);
+            box(win,0,0);
+            wrefresh(win);
+            break;
+        }
         werase(win);
         box(win,0,0);
-        mvwprintw(win, 1, 1, "ETH Header");
-        mvwprintw(win, 2, 2, "Source %s", eth_header->h_source);
-        mvwprintw(win, 3, 2, "Dest %s", eth_header->h_dest);
+        const int tabsize = 4;
+        int absolute_cursor = 0, draw_cursor = 0, first_row = 0;
+        int lines_per_window = max_y - 2;
+        if (current_row >= lines_per_window) 
+            first_row = current_row - lines_per_window+1;
+        for (i = 0; i < num_headers; i++) {
+            int size = sizes[i];
+            for (j = 0; j < size; j++) {
+                int ts = j == 0 ? tabsize: tabsize*2;
+                if (absolute_cursor >= first_row && absolute_cursor < first_row + lines_per_window) {
+                    if (absolute_cursor == current_row)
+                        wattron(win, A_REVERSE);
+                    wattron(win, COLOR_PAIR(2));
+                    mvwprintw(win, ++draw_cursor, ts, "%-40s", fields[i][j]);
+                    wattroff(win, COLOR_PAIR(2));
+                    wattroff(win, A_REVERSE);
+                }
+                absolute_cursor++;
+            }
+        }
+
         wrefresh(win);
     }
 }
@@ -228,7 +329,7 @@ void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no,
     unsigned short iphdrlen = ip_header->ihl * 4;
 
     PacketInfo *pkt_info = malloc(sizeof(PacketInfo));
-    pkt_info->buf = malloc(sizeof(char)*size);
+    pkt_info->buf = malloc(sizeof(unsigned char)*size);
     memcpy(pkt_info->buf, buffer, size);
     pkt_info->ack_seq = -1;
     pkt_info->seq = -1;
@@ -249,6 +350,7 @@ void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no,
 
     inet_ntop(AF_INET, &(src_addr.sin_addr), pkt_info->src_ip, INET_ADDRSTRLEN);
     inet_ntop(AF_INET, &(dest_addr.sin_addr), pkt_info->dest_ip, INET_ADDRSTRLEN);
+
 
     switch (ip_header->protocol) {
         case PROTOCOL_ICMP:
