@@ -34,6 +34,7 @@ typedef struct {
     struct timeval timestamp;
     int packet_no;
     ProtocolType protocol;
+    unsigned char *buf;
     char src_ip[INET_ADDRSTRLEN];
     char dest_ip[INET_ADDRSTRLEN];
     uint32_t seq;            // Sequence number
@@ -57,6 +58,7 @@ double get_elapsed_time(const struct timeval *start_time, const struct timeval *
 const char* get_protocol_str(ProtocolType protocol);
 void tcp_trace(PacketInfo *packet, WINDOW *win, const struct timeval *start_time);
 int is_same_tcp_stream(PacketInfo *p1, PacketInfo *p2);
+void display_packet(WINDOW *win, PacketInfo *info);
 
 int main() {
     unsigned char *buffer = (unsigned char *) malloc(65536);
@@ -91,7 +93,14 @@ int main() {
     int win_starty = 1; // start at line 1
     int win_startx = 1;
 
-    WINDOW *packet_win = newwin(win_height, win_width, win_starty, win_startx);
+    int info_win_width = max_x/2;
+    int info_win_height = win_height;
+    int info_win_x = max_x/2;
+    int info_win_y = 1;
+
+    WINDOW *info_win = newwin(info_win_height, info_win_width, info_win_y, info_win_x);
+    box(info_win, 0, 0);
+    WINDOW *packet_win = newwin(win_height, max_x*2/3, win_starty, win_startx);
     box(packet_win, 0, 0); // draw border
     scrollok(packet_win, TRUE); // allow scrolling
     wrefresh(packet_win);
@@ -131,6 +140,8 @@ int main() {
                     cursor_position++;
                     print_packets(packet_win, &start_time);
                 }
+            } else if (ch == 'p' || ch == 'P') {
+                display_packet(packet_win, packet_list[cursor_position]);
             } else if (ch == 'q' || ch == 'Q') {
                 // exit on 'q' key (we can change later)
                 break;
@@ -191,10 +202,24 @@ int main() {
     close(sock_raw);
     free(buffer);
     for (int i = 0; i < packet_count; ++i) {
+        free(packet_list[i]->buf);
         free(packet_list[i]);
     }
     endwin();
     return EXIT_SUCCESS;
+}
+
+void display_packet(WINDOW *win, PacketInfo *info) {
+    struct ethhdr *eth_header = (struct ethhdr *)(info->buf);
+    while (1) {
+        getch();
+        werase(win);
+        box(win,0,0);
+        mvwprintw(win, 1, 1, "ETH Header");
+        mvwprintw(win, 2, 2, "Source %s", eth_header->h_source);
+        mvwprintw(win, 3, 2, "Dest %s", eth_header->h_dest);
+        wrefresh(win);
+    }
 }
 
 void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no, const struct timeval *start_time) {
@@ -203,6 +228,8 @@ void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no,
     unsigned short iphdrlen = ip_header->ihl * 4;
 
     PacketInfo *pkt_info = malloc(sizeof(PacketInfo));
+    pkt_info->buf = malloc(sizeof(char)*size);
+    memcpy(pkt_info->buf, buffer, size);
     pkt_info->ack_seq = -1;
     pkt_info->seq = -1;
     pkt_info->src_port = 0;
