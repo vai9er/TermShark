@@ -395,16 +395,22 @@ void tcp_trace(PacketInfo *packet, WINDOW *win, const struct timeval *start_time
     PacketInfo *stream_packets[MAX_PACKETS];
     int stream_packet_count = 0;
     stream_packets[0] = packet_list[cursor_position];
+    int syn_found = 0;
 
     for (int i = cursor_position-1; i >= 0; i--) {
         if (is_same_tcp_stream_back(packet, packet_list[i])) {
+            if(syn_found && !(packet_list[i]->tcp_flags & TH_SYN)){
+                break;
+            }
+
             for(int j = stream_packet_count; j >= 0; j--){
                 stream_packets[j+1] = stream_packets[j];
             }
+            
             stream_packets[0] = packet_list[i];
             stream_packet_count++;
             if(packet_list[i]->tcp_flags & TH_SYN){
-                break;
+                syn_found = 1;
             }
         }
     }
@@ -429,12 +435,12 @@ void tcp_trace(PacketInfo *packet, WINDOW *win, const struct timeval *start_time
             if (tcp_cursor_position < stream_packet_count -1) {
                 tcp_cursor_position++;
             }
-        } else if (ch == 'q' || ch == 'Q') {
+        } else if (ch == 'b' || ch == 'B') {
             break;  
         }
         werase(win);  
         box(win, 0, 0); 
-
+        mvwprintw(win, 0, 0, "Following TCP Stream press \"b\" to go back to capture ");
         wattron(win, COLOR_PAIR(1) | A_BOLD);
         mvwprintw(win, 1, 1, "%5s %10s %-7s %-15s %-15s %7s",
                     "No.", "Time", "Proto", "Source", "Destination", "Length");
@@ -481,7 +487,6 @@ void tcp_trace(PacketInfo *packet, WINDOW *win, const struct timeval *start_time
                       pkt_info->seq,
                       pkt_info->ack_seq,
                       pkt_info->tcp_flags);
-                      //pkt_info->tcp_flags);
             wattroff(win, COLOR_PAIR(color_pair));
 
             if (i == tcp_cursor_position) {
