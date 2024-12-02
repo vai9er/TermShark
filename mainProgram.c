@@ -118,12 +118,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    if (setsockopt(sock_raw , SOL_SOCKET , SO_BINDTODEVICE , "eth0" , strlen("eth0")+ 1) < 0) {
-        close(sock_raw);
-        endwin();
-        perror("Binding socket to interface failed");
-        return EXIT_FAILURE;
-    }
+    
 
     //keep track of the start time because wireshark originally does elapsed time
     struct timeval start_time;
