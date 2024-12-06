@@ -26,6 +26,8 @@
 #include <ncurses.h>
 #include <inttypes.h>
 
+#include "filter.h"
+
 typedef enum {
     PROTOCOL_ICMP = 1,
     PROTOCOL_IGMP = 2,
@@ -49,12 +51,18 @@ typedef struct {
     int size;
 } PacketInfo;
 
-#define MAX_PACKETS 1000  // adjust as needed
+#define MAX_PACKETS 100000  // adjust as needed
 
-PacketInfo *packet_list[MAX_PACKETS];
+PacketInfo *packet_list[MAX_PACKETS+1];
+PacketInfo *filtered_packet_list[MAX_PACKETS+1];
 int packet_count = 0;
+int filtered_packet_count = 0;
 int cursor_position = 0;  // index of the currently selected packet
 int paused = 0;
+
+FILE *log;
+
+Filters filter_list = { 0 };
 
 void print_packets(WINDOW *win, const struct timeval *start_time);
 void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no, const struct timeval *start_time);
@@ -63,10 +71,29 @@ const char* get_protocol_str(ProtocolType protocol);
 void tcp_trace(PacketInfo *packet, WINDOW *win, const struct timeval *start_time);
 int is_same_tcp_stream(PacketInfo *p1, PacketInfo *p2);
 void display_packet(WINDOW *win, PacketInfo *info);
+void type_filter_box(WINDOW *win);
+int match_filters(Filters *filters, PacketInfo *info);
+
+int list_count() {
+    int count = packet_list;
+    if (filter_list.list_size > 0) {
+        count = filtered_packet_count;
+    }
+    return count;
+}
+
+PacketInfo **get_list() {
+    PacketInfo **list = &packet_list[0];
+    if (filter_list.list_size > 0) {
+        list = &filtered_packet_list[0];
+    }
+    return list;
+}
 
 int main(int argc, char** argv) {
     unsigned char *buffer = (unsigned char *) malloc(65536);
 
+    log = fopen("log.out", "w");
     if (!buffer) {
         fprintf(stderr, "Failed to allocate memory.\n");
         return EXIT_FAILURE;
@@ -97,14 +124,12 @@ int main(int argc, char** argv) {
     int win_starty = 1; // start at line 1
     int win_startx = 1;
 
-    int info_win_width = max_x/4;
-    int info_win_height = win_height;
-    int info_win_x = win_width/2 + 4;
-    int info_win_y = 1;
-
-    WINDOW *info_win = newwin(info_win_height, info_win_width, info_win_y, info_win_x);
+    move(win_starty, win_startx); // move the cursor to the beginning of the filter box
+    WINDOW *filter_win = newwin(3, win_width*3/4, win_starty, win_startx);
+    box(filter_win, 0, 0);
+    WINDOW *info_win = newwin(win_height-2, win_width/4, win_starty+3, win_startx+win_width/2);
     box(info_win, 0, 0);
-    WINDOW *packet_win = newwin(win_height, win_width/2, win_starty, win_startx);
+    WINDOW *packet_win = newwin(win_height-2, win_width/2, win_starty+3, win_startx);
     box(packet_win, 0, 0); // draw border
     scrollok(packet_win, TRUE); // allow scrolling
     wrefresh(packet_win);
@@ -133,6 +158,8 @@ int main(int argc, char** argv) {
 
         // scrolling stuff
         int ch = getch();
+        wrefresh(filter_win);
+        wrefresh(info_win);
         if (ch != ERR) {
             //listen for up arrow
             if (ch == KEY_UP) {
@@ -142,32 +169,37 @@ int main(int argc, char** argv) {
                 }
             } else if (ch == KEY_DOWN) {
                 //listen for down arrow
-                if (cursor_position < packet_count - 1) {
+                if (cursor_position < list_count() - 1) {
                     cursor_position++;
                     print_packets(packet_win, &start_time);
                 }
             } else if (ch == KEY_RIGHT) {
-                display_packet(info_win, packet_list[cursor_position]);
+                display_packet(info_win, get_list()[cursor_position]);
             } else if (ch == 'p' || ch == 'P') {
-                display_packet(packet_win, packet_list[cursor_position]);
+                display_packet(packet_win, get_list()[cursor_position]);
+            } else if (ch == 'f' || ch == 'F') {
+                type_filter_box(filter_win);
+                cursor_position = 0;
+                print_packets(packet_win, &start_time);
             } else if (ch == 'q' || ch == 'Q') {
                 // exit on 'q' key (we can change later)
                 break;
             } else if (ch == 't' || ch == 'T') {
-                if(packet_list[cursor_position]->protocol == PROTOCOL_TCP){
-                    tcp_trace(packet_list[cursor_position], packet_win, &start_time);
+                PacketInfo *p = get_list()[cursor_position];
+                if(p->protocol == PROTOCOL_TCP){
+                    tcp_trace(p, packet_win, &start_time);
                 }
                 print_packets(packet_win, &start_time);
             } else if (ch == 18){
                 paused = !paused; // toggle paused state
 				if (paused) {
 					mvprintw(0, 0, "Paused. Press Ctrl+R to resume.");
-                    
 				} else {
 					mvprintw(0, 0, "Listening...                     ");
                     for (int i = 0; i < packet_count; ++i) {
 						free(packet_list[i]);
 					}
+                    filtered_packet_count = 0;
 					packet_count = 0;
 					packet_no = 0;
                     gettimeofday(&start_time, NULL);
@@ -214,6 +246,7 @@ int main(int argc, char** argv) {
         free(packet_list[i]);
     }
     endwin();
+    fclose(log);
     return EXIT_SUCCESS;
 }
 
@@ -378,6 +411,10 @@ void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no,
     // store the packet info in the list
     if (packet_count < MAX_PACKETS) {
         packet_list[packet_count++] = pkt_info;
+        for (int i = 0; i < filter_list.list_size; i++) {
+            if (match_filters(&filter_list, pkt_info))
+                filtered_packet_list[filtered_packet_count++] = pkt_info;
+        }
     } else {
         // handle overflow, e.g., by reallocating or discarding old packets
         // naively discard the packets when the buffer is full
@@ -392,6 +429,12 @@ void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no,
 void print_packets(WINDOW *win, const struct timeval *start_time) {
     werase(win);  // clear window content
     box(win, 0, 0);  // draw border
+    PacketInfo **list = &packet_list[0];
+    int count = packet_count;
+    if (filter_list.list_size > 0) {
+        list = &filtered_packet_list[0];
+        count = filtered_packet_count;
+    }
 
     // print headers
     wattron(win, COLOR_PAIR(1) | A_BOLD);
@@ -416,12 +459,12 @@ void print_packets(WINDOW *win, const struct timeval *start_time) {
         first_packet = cursor_position;
     }
     last_packet = first_packet + lines_per_page;
-    if (last_packet > packet_count) {
-        last_packet = packet_count;
+    if (last_packet > count) {
+        last_packet = count;
     }
 
     for (int i = first_packet; i < last_packet; ++i) {
-        PacketInfo *pkt_info = packet_list[i];
+        PacketInfo *pkt_info = list[i];
         double elapsed_time = get_elapsed_time(start_time, &pkt_info->timestamp);
 
         int color_pair;
@@ -479,6 +522,113 @@ const char* get_protocol_str(ProtocolType protocol) {
             return "UDP";
         default:
             return "OTHER";
+    }
+}
+
+int match_filters(Filters *filters, PacketInfo *info) {
+    for (int i = 0; i < filter_list.list_size; i++) {
+        FilterItem *item = &filter_list.filters[i];
+        int b;
+        switch (item->field) {
+            case FILTER_PROTOCOL:
+                b = strcasecmp(item->value, get_protocol_str(info->protocol)) == 0;
+                break;
+            case FILTER_SOURCE_IP:
+                b = strcasecmp(item->value, info->src_ip) == 0;
+                break;
+            case FILTER_DESTINATION_IP:
+                b = strcasecmp(item->value, info->dest_ip) == 0;
+                break;
+            default:
+                b = 0;
+                break;
+        }
+        if (item->negate) b = !b;
+
+        if (!b) {
+            return FALSE;
+        }
+    } 
+    return TRUE;
+}
+
+void type_filter_box(WINDOW *win) {
+    curs_set(TRUE);
+    int ch;
+    while ((ch = getch()) != '\n') {
+        werase(win);
+        box(win,0,0);
+        mvwprintw(win, 1, 1, filter_list.filter_string);
+        if (ch == KEY_BACKSPACE || ch == KEY_DC || ch == 127 || ch == '\b') {
+            if (filter_list.filter_pos > 0) {
+                filter_list.filter_pos--;
+                filter_list.filter_string[filter_list.filter_pos] = '\0';
+            }
+        } else if (ch >= 32 && ch <= 126) {
+            if (filter_list.filter_pos < MAX_FILTER_LEN) {
+                filter_list.filter_string[filter_list.filter_pos++] = ch;
+                filter_list.filter_string[filter_list.filter_pos] = '\0';
+            }
+        }
+
+        // move(1, 2 + filter_pos);
+        wrefresh(win);
+    }
+    curs_set(FALSE);
+    
+    char *s = filter_list.filter_string;
+    int i = 0;
+    filter_list.list_size = 0;
+    // parse filter string
+    while (*s != '\0') {
+        while (*s == ' ') s++;
+        
+        FilterItem *item = &filter_list.filters[filter_list.list_size];
+        item->negate = FALSE; 
+        if (*s == '!') {
+            item->negate = TRUE; 
+            s++;
+        }
+
+        int match = FALSE;
+        // identify which filter it is
+        if (strlen(s) >= 4 && strncmp(s, "src=", 4) == 0) {
+            item->field = FILTER_SOURCE_IP;
+            match = TRUE;
+            s += 4;
+        } else if (strlen(s) >= 4 && strncmp(s, "dst=", 4) == 0) {
+            item->field = FILTER_DESTINATION_IP;
+            match = TRUE;
+            s += 4;
+        } else if (strlen(s) >= 6 && strncmp(s, "proto=", 6) == 0) {
+            item->field = FILTER_PROTOCOL;
+            match = TRUE;
+            s += 6;
+        }
+
+        // skip if not matching any of the predefined filters
+        if (!match) {
+            s++;
+            continue;
+        }
+
+        i = 0;
+        // copy the value of the string into the filter
+        while (*s != '\0' && *s != ' ') {
+            item->value[i++] = *s;
+            s++;
+        }
+        item->value[i] = '\0';
+
+        fflush(log);
+        filter_list.list_size++;
+    }
+
+    filtered_packet_count = 0;
+    for (int i = 0; i < packet_count; i++) {
+        if (match_filters(&filter_list, packet_list[i])) {
+            filtered_packet_list[filtered_packet_count++] = packet_list[i];
+        }
     }
 }
 
