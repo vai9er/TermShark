@@ -3,6 +3,7 @@ Packet Sniffer in C
 
 
 Ben Wilson 1007289024 wilos929
+
 Gabriel Vaner 1007121204 vainerga
 Ben's Contirbution:
 
@@ -101,7 +102,7 @@ Importing and Exporting:
         Continues until all packets are read, or the maximum storage limit is reached.
 
 
-Gabe's Contribution
+Gabe's Contribution:
 Core Packet Handling & Processing, Base functionality, and User Interface Setup, Pausing and Resuming Packets
 
     Struct PacketInfo
