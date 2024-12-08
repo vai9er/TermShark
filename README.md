@@ -1,11 +1,11 @@
 # D58-Final-Project
 Packet Sniffer in C
 
-
 Ben Wilson 1007289024 wilos929
 
 Gabriel Vaner 1007121204 vainerga
 
+Howard Yang 1006722478 yanghow2
 
 Ben's Contirbution:
 
@@ -47,10 +47,10 @@ TCP Stream Following:
         Compares the source and destination IPs and ports of both packets to verify a match.
         Ensures that the sequence number of p1 is less than or equal to that of p2 or the 
         acknowledgment sequence number of p1 is less than or equal to p2.
-
+  tcp_trace(PacketInfo *packet, WINDOW *win, const struct timeval *start_time):
    
-    tcp_trace(PacketInfo *packet, WINDOW *win, const struct timeval *start_time):
-        
+   
+       
         PacketInfo *packet: Pointer to the starting packet for the trace.
         WINDOW *win: A pointer to the ncurses window used for displaying the trace.
         const struct timeval *start_time: Pointer to the start time of the capture for calculating elapsed time.
@@ -142,3 +142,54 @@ Core Packet Handling & Processing, Base functionality, UI Setup in Ncurses, Paus
     double get_elapsed_time(const struct timeval *start_time, const struct timeval *current_time)
     Calculates the elapsed time in seconds between the start time and the current packet's timestamp, used for tracking relative packet arrival times.
     
+
+Howard’s Contribution:
+	Displaying packets:
+	When the user presses the right arrow while selecting a packet, it will display more
+    information in the right box. Pressing the up and down arrow keys allows scrolling.
+
+	void display_packet(WINDOW *win, PacketInfo *info)
+		WINDOW *win: The window in which the packet data will be displayed
+		PacketInfo info: The packet to be displayed
+	
+	This function determines what headers are important to display by examining the
+    protocol field of the info struct. The remainder is a while loop that displays the 
+    current packet headers, and responds to directional arrow keys to enable. To exit 
+    the while loop simply press the left arrow key.
+
+
+    Filtering Packets:
+    Pressing “F” while on the main packet list, moves the cursor to the top input text 
+    box where you are able to type specific keywords that will filter the packet list.
+
+    typedef struct FilterItem_t {
+        enum FilterField field; // either source ip, destination ip or protocol
+        int negate; // whether or not to negate
+        char value[MAX_SEARCH_VALUE_LEN]; // the string to filter by
+    } FilterItem;
+
+
+    typedef struct Filters_t {
+        int list_size; // the current number of filters
+        FilterItem filters[100]; // the list of filters
+        char filter_string[MAX_FILTER_LEN];
+        int filter_pos;
+    } Filters;
+
+    int match_filters(Filters *filters, PacketInfo *info)
+        Filters *filters: The list of filters
+        PacketInfo *info: The packet to check against the filters
+        returns True iff the packet matches all the filters
+
+    This function is a helper for determining whether or not a packet is matching the 
+    currently applied filters
+
+    void type_filter_box(WINDOW *win)
+        WINDOW *win: The window that will be typed
+
+    This is the function responsible for reading keyboard inputs and saving the 
+    contents of the filter string to a buffer. There is a loop that parses this string and 
+    looks for keywords such as “src=”, “dst=”, and “proto=” and the subsequent value 
+    to filter by. It also checks if the first character is a “!” and negates the 
+    following expression, so “!src=127.0.0.1” is a valid filter.
+
