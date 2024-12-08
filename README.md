@@ -105,7 +105,7 @@ Importing and Exporting:
 
 
 Gabe's Contribution:
-Core Packet Handling & Processing, Base functionality, and User Interface Setup, Pausing and Resuming Packets
+Core Packet Handling & Processing, Base functionality, UI Setup in Ncurses, Pausing and Resuming Packets
 
     Struct PacketInfo
     PacketInfo is a structure that encapsulates all relevant information about a captured network packet. It includes:
