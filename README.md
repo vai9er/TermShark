@@ -70,4 +70,33 @@ TCP Stream Following:
         Highlights the currently selected packet and dynamically updates the view as the user navigates through the stream.
 
 
+Importing and Exporting:
+
+    The user can save the currently caputured packest to be viewed again later.
+
+    export_to_pcapng(const char *filename):
+        
+        const char *filename:
+        The path and filename where the PCAP-NG data will be saved.
+
+        Exports the captured packets currently stored in packet_list to a specified PCAP-NG file.
+
+        Creates/opens the specified PCAP-NG file and writes all packets from the packet_list to it.
+        Each packet is written with a timestamp and its full captured length.
+        If the pcap handle or PCAP-NG file cannot be opened, an error message is displayed.
+
+    import_from_pcapng(const char *filename):
+
+        const char *filename:
+        The path and filename of the PCAP-NG file to be read and imported.
+
+        Imports packets from a given PCAP-NG file into the packet_list
+        
+        Opens the specified PCAP-NG file for reading.
+        Iterates through all packets, extracting the Ethernet and IP headers.
+        Identifies protocols (ICMP, IGMP, TCP, UDP, or OTHER).
+        For TCP packets, extracts sequence, acknowledgment numbers, ports, and flags.
+        Converts IP addresses to human-readable format.
+        Packs all information into PacketInfo structures and stores them in packet_list.
+        Continues until all packets are read, or the maximum storage limit is reached.
 
