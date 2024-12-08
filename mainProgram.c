@@ -25,6 +25,7 @@
 #include <netinet/tcp.h>      // TCP header
 #include <ncurses.h>
 #include <inttypes.h>
+#include <pcap/pcap.h>
 
 #include "filter.h"
 
@@ -59,6 +60,7 @@ int packet_count = 0;
 int filtered_packet_count = 0;
 int cursor_position = 0;  // index of the currently selected packet
 int paused = 0;
+int imported = 0;
 
 FILE *log;
 
@@ -73,6 +75,10 @@ int is_same_tcp_stream(PacketInfo *p1, PacketInfo *p2);
 void display_packet(WINDOW *win, PacketInfo *info);
 void type_filter_box(WINDOW *win);
 int match_filters(Filters *filters, PacketInfo *info);
+void type_export(WINDOW *win);
+void type_import(WINDOW *win);
+void import_from_pcapng(const char *filename);
+void export_to_pcapng(const char *filename);
 
 int list_count() {
     int count = packet_list;
@@ -89,6 +95,7 @@ PacketInfo **get_list() {
     }
     return list;
 }
+
 
 int main(int argc, char** argv) {
     unsigned char *buffer = (unsigned char *) malloc(65536);
@@ -209,8 +216,23 @@ int main(int argc, char** argv) {
 				}
 				refresh();
 
-            }
-            
+            }else if (ch == 'e' || ch == 'E') {  
+                type_export(filter_win);
+            } else if (ch == 'i' || ch == 'I') {  
+                imported = 1;
+                int save_count = packet_count;
+                int save_pos = cursor_position;
+                packet_count = 0;
+                cursor_position = 0;
+                type_import(filter_win);
+                if(imported){
+                    print_packets(packet_win, &start_time);
+                }
+                else{
+                    packet_count = save_count;
+                    cursor_position = save_pos;
+                }
+            }   
         }
 
         // if (paused) {
@@ -220,7 +242,7 @@ int main(int argc, char** argv) {
 
         // receive a raw ethernet frame
         
-        if(!paused){
+        if(!paused && !imported){
             int data_size = recvfrom(sock_raw, buffer, 65536, MSG_DONTWAIT, &saddr, (socklen_t *)&saddr_size);
             if (data_size < 0) {
                 if (errno == EWOULDBLOCK || errno == EAGAIN) {
@@ -769,4 +791,176 @@ void tcp_trace(PacketInfo *packet, WINDOW *win, const struct timeval *start_time
         }
         wrefresh(win);
     }
+}
+
+
+void export_to_pcapng(const char *filename) {
+    pcap_t *handle;
+    pcap_dumper_t *dumper;
+    
+    handle = pcap_open_dead(DLT_EN10MB, 65535);
+    if (!handle) {
+        mvprintw(0, 0,  "Failed to open pcap handle.\n");
+        return;
+    }
+
+    dumper = pcap_dump_open(handle, filename);
+    if (!dumper) {
+        mvprintw(0, 0, "Failed to open pcapng file: %s\n", pcap_geterr(handle));
+        pcap_close(handle);
+        return;
+    }
+
+    for (int i = 0; i < packet_count; i++) {
+        struct pcap_pkthdr header;
+        header.ts = (struct timeval)packet_list[i]->timestamp;
+        header.caplen = packet_list[i]->size;
+        header.len = packet_list[i]->size;
+        
+        pcap_dump((unsigned char *)dumper, &header, packet_list[i]->buf);
+    }
+
+    pcap_dump_close(dumper);
+    pcap_close(handle);
+}
+
+
+void import_from_pcapng(const char *filename) {
+    char errbuf[PCAP_ERRBUF_SIZE];
+    pcap_t *handle = pcap_open_offline(filename, errbuf);
+
+    if (!handle) {
+        mvprintw(0, 0, "Failed to open pcapng file: %s", errbuf);
+        imported = 0;
+        return;
+    }
+
+    struct pcap_pkthdr *header;
+    const unsigned char *data;
+    int packet_no = 0;
+
+    while (pcap_next_ex(handle, &header, &data) > 0) {
+
+        PacketInfo *pkt_info = malloc(sizeof(PacketInfo));
+        pkt_info->buf = malloc(sizeof(unsigned char)*header->caplen);
+        memcpy(pkt_info->buf, data, header->caplen);
+
+
+        struct iphdr *ip_header = (struct iphdr *)(data + sizeof(struct ethhdr));
+        unsigned short iphdrlen = ip_header->ihl * 4;
+        memcpy(pkt_info->buf, data, header->caplen);
+        pkt_info->ack_seq = -1;
+        pkt_info->seq = -1;
+        pkt_info->src_port = 0;
+        pkt_info->dest_port = 0;
+        pkt_info->tcp_flags = 0;
+        pkt_info->timestamp = (struct timeval)header->ts;
+
+        if (!pkt_info) {
+            mvprintw(0, 0, "Failed to allocate memory for PacketInfo.");
+            imported = 0;
+            return;
+        }
+        struct sockaddr_in src_addr, dest_addr;
+
+        memset(&src_addr, 0, sizeof(src_addr));
+        src_addr.sin_addr.s_addr = ip_header->saddr;
+        memset(&dest_addr, 0, sizeof(dest_addr));
+        dest_addr.sin_addr.s_addr = ip_header->daddr;
+
+        inet_ntop(AF_INET, &(src_addr.sin_addr), pkt_info->src_ip, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &(dest_addr.sin_addr), pkt_info->dest_ip, INET_ADDRSTRLEN);
+
+
+        switch (ip_header->protocol) {
+            case PROTOCOL_ICMP:
+                pkt_info->protocol = PROTOCOL_ICMP;
+                break;
+            case PROTOCOL_IGMP:
+                pkt_info->protocol = PROTOCOL_IGMP;
+                break;
+            case PROTOCOL_TCP: {
+                pkt_info->protocol = PROTOCOL_TCP;
+                struct tcphdr *tcp_header = (struct tcphdr *)(data + sizeof(struct ethhdr) + iphdrlen);
+                pkt_info->seq = ntohl(tcp_header->th_seq);
+                pkt_info->ack_seq = ntohl(tcp_header->th_ack);
+                pkt_info->src_port = ntohs(tcp_header->source);
+                pkt_info->dest_port = ntohs(tcp_header->dest);
+                pkt_info->tcp_flags = tcp_header->th_flags;
+                break;
+            }case PROTOCOL_UDP:
+                pkt_info->protocol = PROTOCOL_UDP;
+                break;
+            default:
+                pkt_info->protocol = PROTOCOL_OTHER;
+                break;
+        }
+        pkt_info->packet_no = ++packet_no;
+        pkt_info->size = header->caplen;
+
+        if (packet_count < MAX_PACKETS) {
+            packet_list[packet_count++] = pkt_info;
+        } else {
+            free(pkt_info);
+            return;
+        }
+
+    }
+
+    pcap_close(handle);
+}
+
+
+void type_export(WINDOW *win) {
+    curs_set(TRUE);
+    int ch;
+    while ((ch = getch()) != '\n') {
+        werase(win);
+        box(win,0,0);
+        mvwprintw(win, 1, 1, filter_list.filter_string);
+        if (ch == KEY_BACKSPACE || ch == KEY_DC || ch == 127 || ch == '\b') {
+            if (filter_list.filter_pos > 0) {
+                filter_list.filter_pos--;
+                filter_list.filter_string[filter_list.filter_pos] = '\0';
+            }
+        } else if (ch >= 32 && ch <= 126) {
+            if (filter_list.filter_pos < MAX_FILTER_LEN) {
+                filter_list.filter_string[filter_list.filter_pos++] = ch;
+                filter_list.filter_string[filter_list.filter_pos] = '\0';
+            }
+        }
+
+        // move(1, 2 + filter_pos);
+        wrefresh(win);
+    }
+    curs_set(FALSE);
+    char *s = filter_list.filter_string;
+    export_to_pcapng(s);
+}
+
+void type_import(WINDOW *win) {
+    curs_set(TRUE);
+    int ch;
+    while ((ch = getch()) != '\n') {
+        werase(win);
+        box(win,0,0);
+        mvwprintw(win, 1, 1, filter_list.filter_string);
+        if (ch == KEY_BACKSPACE || ch == KEY_DC || ch == 127 || ch == '\b') {
+            if (filter_list.filter_pos > 0) {
+                filter_list.filter_pos--;
+                filter_list.filter_string[filter_list.filter_pos] = '\0';
+            }
+        } else if (ch >= 32 && ch <= 126) {
+            if (filter_list.filter_pos < MAX_FILTER_LEN) {
+                filter_list.filter_string[filter_list.filter_pos++] = ch;
+                filter_list.filter_string[filter_list.filter_pos] = '\0';
+            }
+        }
+
+        // move(1, 2 + filter_pos);
+        wrefresh(win);
+    }
+    curs_set(FALSE);
+    char *s = filter_list.filter_string;
+    import_from_pcapng(s);
 }
