@@ -1,3 +1,3 @@
 #!/bin/bash
 
-gcc -o sniffer mainProgram.c -lncurses -g
+gcc -o sniffer mainProgram.c -lncurses -lpcap -g

@@ -81,7 +81,7 @@ void import_from_pcapng(const char *filename);
 void export_to_pcapng(const char *filename);
 
 int list_count() {
-    int count = packet_list;
+    int count = packet_count;
     if (filter_list.list_size > 0) {
         count = filtered_packet_count;
     }
@@ -330,10 +330,42 @@ void display_packet(WINDOW *win, PacketInfo *info) {
     sprintf(tcp_format[i++], "%-20s %d", "Checksum", ntohs(tcp_header->check));
     sprintf(tcp_format[i++], "%-20s %d", "Urgent Pointer", tcp_header->urg_ptr);
 
-    char (*fields[])[100] = {ethernet_format, ipv4_format, tcp_format};
-    #define num_headers 3
-    int sizes[num_headers] = { ethernet_fields, ip_fields, tcp_fields };
-    int total_fields = ethernet_fields + ip_fields + tcp_fields;
+    const int udp_fields = 5;
+    struct udphdr *udp_header = (struct udphdr *)(info->buf + sizeof(struct ether_header) + ip_header->ihl*4);
+    char udp_format[udp_fields][100];
+
+    i = 0;
+    sprintf(udp_format[i++], "UDP Header");
+    sprintf(udp_format[i++], "%-20s %d", "Source Port", ntohs(udp_header->source));
+    sprintf(udp_format[i++], "%-20s %d", "Destination Port", ntohs(udp_header->dest));
+    sprintf(udp_format[i++], "%-20s %d", "Length", ntohs(udp_header->len));
+    sprintf(udp_format[i++], "%-20s %d", "Checksum", ntohs(udp_header->check));
+
+    int num_headers;
+    char (*fields[6])[100];
+    int sizes[6];
+    int total_fields;
+    if (info->protocol == PROTOCOL_TCP) {
+        num_headers = 3;
+        total_fields = ethernet_fields + ip_fields + tcp_fields;
+        sizes[0] = ethernet_fields;
+        sizes[1] = ip_fields;
+        sizes[2] = tcp_fields;
+
+        fields[0] = ethernet_format;
+        fields[1] = ipv4_format;
+        fields[2] = tcp_format;
+    } else if (info->protocol == PROTOCOL_UDP) {
+        num_headers = 3;
+        total_fields = ethernet_fields + ip_fields + udp_fields;
+        sizes[0] = ethernet_fields;
+        sizes[1] = ip_fields;
+        sizes[2] = udp_fields;
+
+        fields[0] = ethernet_format;
+        fields[1] = ipv4_format;
+        fields[2] = udp_format;
+    }
     while (1) {
         int key = getch();
         if (key == KEY_DOWN) {
