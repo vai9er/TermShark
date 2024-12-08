@@ -130,15 +130,15 @@ Core Packet Handling & Processing, Base functionality, UI Setup in Ncurses, Paus
     Keeps the current state of the program including a list of the processed packets, a list of filtered packets, the current packet count of the program, as well as indicators for the cursor and pause/resume state.
 
     int main(int argc, char** argv)
-    This is the main function of the program that draws sets up a raw socket for packet capture, initializes the ncurses user interface and draws the neccesary components, and handles user inputs for interacting with packets. It continuously listens for packets using recvfrom(), processes them, and updates the UI for users to view or manipulate packet details, as well as determines whether we are paused (and should stop listening for packets) or to continously listen.
+    Sets up a raw socket for packet capture, initializes the ncurses user interface and draws the neccesary components, and handles user inputs for interacting with packets. It continuously listens for packets using recvfrom(), processes them, and updates the UI for users to view or manipulate packet details, as well as determines whether we are paused (and should stop listening for packets) or to continously listen.
 
     void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no, const struct timeval *start_time)
-    This function processes a captured packet by extracting its headers and creating a PacketInfo structure containing the metadata. It adds the packet to the list of packets, applies  filters if any, and updates the packet list displayed in the ncurses window.
+    Processses a captured packet by extracting its headers and creating a PacketInfo structure containing the metadata. It adds the packet to the list of packets, applies  filters if any, and updates the packet list displayed in the ncurses window.
 
     void print_packets(WINDOW *win, const struct timeval *start_time)
-    This function prints the respective summary list of captured packets in the dedicated ncurses window. It supports scrolling and highlights the currently selected packet, displaying details such 
+    Prints the respective summary list of captured packets in the dedicated ncurses window. It supports scrolling and highlights the currently selected packet, displaying details such 
     as the packet number, protocol, source/destination addresses, and length.
 
     double get_elapsed_time(const struct timeval *start_time, const struct timeval *current_time)
-    This utility function calculates the elapsed time in seconds between the start time and the current packet's timestamp, used for tracking relative packet arrival times.
+    Calculates the elapsed time in seconds between the start time and the current packet's timestamp, used for tracking relative packet arrival times.
     
