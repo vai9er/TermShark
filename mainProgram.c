@@ -225,7 +225,7 @@ int main(int argc, char** argv) {
                 type_import(filter_win);
                 if(imported){
                     print_packets(packet_win, &start_time);
-					mvprintw(0, 0, "Imported PCAP                     ");
+					mvprintw(0, 0, "Imported PCAP                                               ");
                 }
                 else{
                     packet_count = save_count;
