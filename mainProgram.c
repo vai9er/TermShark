@@ -132,9 +132,9 @@ int main(int argc, char** argv) {
     int win_startx = 1;
 
     move(win_starty, win_startx); // move the cursor to the beginning of the filter box
-    WINDOW *filter_win = newwin(3, win_width*3/4, win_starty, win_startx);
+    WINDOW *filter_win = newwin(3, win_width, win_starty, win_startx);
     box(filter_win, 0, 0);
-    WINDOW *info_win = newwin(win_height-2, win_width/4, win_starty+3, win_startx+win_width/2);
+    WINDOW *info_win = newwin(win_height-2, win_width/2, win_starty+3, win_startx+win_width/2);
     box(info_win, 0, 0);
     WINDOW *packet_win = newwin(win_height-2, win_width/2, win_starty+3, win_startx);
     box(packet_win, 0, 0); // draw border
@@ -341,6 +341,16 @@ void display_packet(WINDOW *win, PacketInfo *info) {
     sprintf(udp_format[i++], "%-20s %d", "Length", ntohs(udp_header->len));
     sprintf(udp_format[i++], "%-20s %d", "Checksum", ntohs(udp_header->check));
 
+    const int icmp_fields = 4;
+    struct icmphdr *icmp_header = (struct icmphdr *)(info->buf + sizeof(struct ether_header) + ip_header->ihl*4);
+    char icmp_format[icmp_fields][100];
+
+    i = 0;
+    sprintf(icmp_format[i++], "ICMP Header");
+    sprintf(icmp_format[i++], "%-20s %d", "Type", icmp_header->type);
+    sprintf(icmp_format[i++], "%-20s %d", "Code", icmp_header->code);
+    sprintf(icmp_format[i++], "%-20s %d", "Checksum", ntohs(icmp_header->checksum));
+
     int num_headers;
     char (*fields[6])[100];
     int sizes[6];
@@ -365,6 +375,16 @@ void display_packet(WINDOW *win, PacketInfo *info) {
         fields[0] = ethernet_format;
         fields[1] = ipv4_format;
         fields[2] = udp_format;
+    } else if (info->protocol == PROTOCOL_ICMP) {
+        num_headers = 3;
+        total_fields = ethernet_fields + ip_fields + icmp_fields;
+        sizes[0] = ethernet_fields;
+        sizes[1] = ip_fields;
+        sizes[2] = icmp_fields;
+
+        fields[0] = ethernet_format;
+        fields[1] = ipv4_format;
+        fields[2] = icmp_format;
     }
     while (1) {
         int key = getch();
@@ -392,9 +412,25 @@ void display_packet(WINDOW *win, PacketInfo *info) {
                 if (absolute_cursor >= first_row && absolute_cursor < first_row + lines_per_window) {
                     if (absolute_cursor == current_row)
                         wattron(win, A_REVERSE);
-                    wattron(win, COLOR_PAIR(2));
+
+                    int color_pair;
+                    switch (info->protocol) {
+                        case PROTOCOL_TCP:
+                            color_pair = 2;
+                            break;
+                        case PROTOCOL_UDP:
+                            color_pair = 3;
+                            break;
+                        case PROTOCOL_ICMP:
+                            color_pair = 4;
+                            break;
+                        default:
+                            color_pair = 5;
+                            break;
+                    }
+                    wattron(win, COLOR_PAIR(color_pair));
                     mvwprintw(win, ++draw_cursor, ts, "%-40s", fields[i][j]);
-                    wattroff(win, COLOR_PAIR(2));
+                    wattroff(win, COLOR_PAIR(color_pair));
                     wattroff(win, A_REVERSE);
                 }
                 absolute_cursor++;
