@@ -914,53 +914,55 @@ void import_from_pcapng(const char *filename) {
 void type_export(WINDOW *win) {
     curs_set(TRUE);
     int ch;
+    char buf[MAX_FILTER_LEN];
+    buf[0] = '\0';
+    int bufpos = 0;
     while ((ch = getch()) != '\n') {
         werase(win);
         box(win,0,0);
-        mvwprintw(win, 1, 1, filter_list.filter_string);
+        mvwprintw(win, 1, 1, buf);
         if (ch == KEY_BACKSPACE || ch == KEY_DC || ch == 127 || ch == '\b') {
-            if (filter_list.filter_pos > 0) {
-                filter_list.filter_pos--;
-                filter_list.filter_string[filter_list.filter_pos] = '\0';
+            if (bufpos > 0) {
+                bufpos--;
+                buf[bufpos] = '\0';
             }
         } else if (ch >= 32 && ch <= 126) {
-            if (filter_list.filter_pos < MAX_FILTER_LEN) {
-                filter_list.filter_string[filter_list.filter_pos++] = ch;
-                filter_list.filter_string[filter_list.filter_pos] = '\0';
+            if (bufpos < MAX_FILTER_LEN) {
+                buf[bufpos++] = ch;
+                buf[bufpos] = '\0';
             }
         }
-
-        // move(1, 2 + filter_pos);
         wrefresh(win);
     }
     curs_set(FALSE);
-    char *s = filter_list.filter_string;
+    char *s = buf;
     export_to_pcapng(s);
 }
 
 void type_import(WINDOW *win) {
     curs_set(TRUE);
     int ch;
+    char buf[MAX_FILTER_LEN];
+    buf[0] = '\0';
+    int bufpos = 0;
     while ((ch = getch()) != '\n') {
         werase(win);
         box(win,0,0);
-        mvwprintw(win, 1, 1, filter_list.filter_string);
+        mvwprintw(win, 1, 1, buf);
         if (ch == KEY_BACKSPACE || ch == KEY_DC || ch == 127 || ch == '\b') {
-            if (filter_list.filter_pos > 0) {
-                filter_list.filter_pos--;
-                filter_list.filter_string[filter_list.filter_pos] = '\0';
+            if (bufpos > 0) {
+                bufpos--;
+                buf[bufpos] = '\0';
             }
         } else if (ch >= 32 && ch <= 126) {
-            if (filter_list.filter_pos < MAX_FILTER_LEN) {
-                filter_list.filter_string[filter_list.filter_pos++] = ch;
-                filter_list.filter_string[filter_list.filter_pos] = '\0';
+            if (bufpos < MAX_FILTER_LEN) {
+                buf[bufpos++] = ch;
+                buf[bufpos] = '\0';
             }
         }
-
-        // move(1, 2 + filter_pos);
         wrefresh(win);
     }
     curs_set(FALSE);
-    char *s = filter_list.filter_string;
+    char *s = buf;
     import_from_pcapng(s);
 }
