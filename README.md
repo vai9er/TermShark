@@ -3,7 +3,7 @@ Packet Sniffer in C
 
 
 Ben Wilson 1007289024 wilos929
-
+Gabriel Vaner 1007121204 vainerga
 Ben's Contirbution:
 
 TCP Stream Following:
@@ -100,3 +100,44 @@ Importing and Exporting:
         Packs all information into PacketInfo structures and stores them in packet_list.
         Continues until all packets are read, or the maximum storage limit is reached.
 
+
+Gabe's Contribution
+Core Packet Handling & Processing, Base functionality, and User Interface Setup, Pausing and Resuming Packets
+
+    Struct PacketInfo
+    PacketInfo is a structure that encapsulates all relevant information about a captured network packet. It includes:
+    Timestamp: When the packet was captured.
+    Packet Number: A unique identifier for each packet.
+    Protocol: The type of protocol used (e.g., TCP, UDP).
+    Buffer (buf): Pointer to the raw packet data.
+    Source and Destination IPs: Human-readable IP addresses.
+    TCP-Specific Fields: Sequence number, acknowledgment number, source and destination ports, and TCP flags.
+    Size: The size of the packet in bytes.
+
+
+    PacketInfo *packet_list[MAX_PACKETS+1];
+    PacketInfo *filtered_packet_list[MAX_PACKETS+1];
+    int packet_count = 0;
+    int filtered_packet_count = 0;
+    int cursor_position = 0;  // index of the currently selected packet
+    int paused = 0;
+    int imported = 0;
+    FILE *log;
+
+    Keeps the current state of the program including a list of the processed packets, a list of filtered packets, the current packet count of the program, as well as indicators for the        cursor and pause/resume state.
+
+    int main(int argc, char** argv)
+    This is the main function of the program that sets up a raw socket for packet capture, initializes the ncurses user interface, and handles user inputs for interacting with packets. It     continuously listens for packets using recvfrom(), processes them, and updates the UI for users to view or manipulate packet details.
+
+    The main function is also responsible for determining whether we are paused (and should stop listening for packets) or to continously listen.
+
+    void process_packet(WINDOW *win, unsigned char *buffer, int size, int packet_no, const struct timeval *start_time)
+    This function processes a captured packet by extracting its headers and creating a PacketInfo structure containing the metadata. It adds the packet to the list of packets, applies         filters if any, and updates the packet list displayed in the ncurses window.
+
+    void print_packets(WINDOW *win, const struct timeval *start_time)
+    This function prints the respective summary list of captured packets in the ncurses window. It supports scrolling and highlights the currently selected packet, displaying details such 
+    as the packet number, protocol, source/destination addresses, and length.
+
+    double get_elapsed_time(const struct timeval *start_time, const struct timeval *current_time)
+    This utility function calculates the elapsed time in seconds between the start time and the current packet's timestamp, used for tracking relative packet arrival times.
+    
