@@ -150,8 +150,6 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    
-
     //keep track of the start time because wireshark originally does elapsed time
     struct timeval start_time;
     //gettimeofday will fill in start_time with the exact time in seconds.microseconds
@@ -227,6 +225,7 @@ int main(int argc, char** argv) {
                 type_import(filter_win);
                 if(imported){
                     print_packets(packet_win, &start_time);
+					mvprintw(0, 0, "Imported PCAP                     ");
                 }
                 else{
                     packet_count = save_count;
@@ -385,6 +384,11 @@ void display_packet(WINDOW *win, PacketInfo *info) {
         fields[0] = ethernet_format;
         fields[1] = ipv4_format;
         fields[2] = icmp_format;
+    } else {
+        num_headers = 1;
+        total_fields = ethernet_fields;
+        sizes[0] = ethernet_fields;
+        fields[0] = ethernet_format;
     }
     while (1) {
         int key = getch();
@@ -1005,6 +1009,7 @@ void type_export(WINDOW *win) {
     curs_set(FALSE);
     char *s = buf;
     export_to_pcapng(s);
+    mvwprintw(win, 1, 1, filter_list.filter_string);
 }
 
 void type_import(WINDOW *win) {
@@ -1033,4 +1038,5 @@ void type_import(WINDOW *win) {
     curs_set(FALSE);
     char *s = buf;
     import_from_pcapng(s);
+    mvwprintw(win, 1, 1, filter_list.filter_string);
 }
