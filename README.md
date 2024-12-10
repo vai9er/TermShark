@@ -6,6 +6,7 @@ Ben Wilson 1007289024 wilos929
 Gabriel Vaner 1007121204 vainerga
 
 Howard Yang 1006722478 yanghow2
+![image](https://github.com/user-attachments/assets/5c39c3ba-ccb2-491c-a734-e8c12193e4b0)
 
 Ben's Contirbution:
 
