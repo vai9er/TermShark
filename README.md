@@ -1,12 +1,64 @@
-# D58-Final-Project
-Packet Sniffer in C
-
-Ben Wilson 1007289024 wilos929
-
-Gabriel Vaner 1007121204 vainerga
-
-Howard Yang 1006722478 yanghow2
 ![image](https://github.com/user-attachments/assets/5c39c3ba-ccb2-491c-a734-e8c12193e4b0)
+
+## CLI-based Wireshark Clone written in C and ncurses with all of your favourite Wireshark Features!
+### Includes all of Your favourite WireShark Features straight from the terminal, GUI-Free!
+###### Note: This was submitted as a final project for CSCD58-Computer Networks at the University of Toronto
+
+## Table of Contents
+- [Features](#includes-all-of-your-favourite-wireshark-features-straight-from-the-terminal-gui-free)
+  - [Live Sniffing (Left) && Scrolling (Right)](#live-sniffing-left--scrolling-right)
+  - [Tracerouting/TCP Streaming](#traceroutingtcp-streaming)
+  - [Packet Inspection](#packet-inspection)
+  - [Filtering By Protocols](#filtering-by-protocols)
+  - [Filter Out Protocols](#filter-out-protocols)
+  - [Filtering by any Packet Field](#filtering-by-any-packet-field)
+  - [Other Capture Features](#other-capture-features)
+- [How to Compile and Run](#compilation)
+- [Credits and Contributions](#credits-and-contributions)
+
+
+<br />
+
+### Live Captures (Left) && Scrolling (Right)
+##### As soon as you start the program, you will see a live capture of all the incoming packets on your local network. You are also able to scroll through all of them
+<kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ3ljaGJzcmpkd2k4M2t3bHAxM2ZzYm5tMWowOHVtOXRkeXlqMXRvbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/KSHI4imtvd0QOozYP3/giphy.gif)</kbd>  <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2xncHE2NzU1cHB6YWZsc3J2Z2IwdWZxazJwNHI4cnZ6dTVmdmt0aSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/H5g6RAZgfK3mo2rNE6/giphy.gif)</kbd>
+
+### Tracerouting/TCP Streaming
+##### Pressing `t` on a particular TCP packet will display its TCP stream i.e a list of all TCP packets sent between the two hosts
+
+![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NpYzIzajFldXU0emU3Nnd2ZnFjNXlvNmhmdmExcWoxNnVybzB1dSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U2daJMreqZmijUsEEq/giphy.gif)  
+
+### Packet Inspection
+##### Pressing `->` on any packet allows you to visualize and inspect its protocol-specific headers 
+###### (includes datagram segments for UDP and segments for TCP)
+![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcXJqbmQxM29tY2Q1enJ3OGhycG53bTU0OWRrcmFyNGVrOHg0YjU2cyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/oV0hXdfVMRd45UFQoo/giphy.gif)
+
+### Filtering By Protocols
+
+##### Pressing `ctrl-f` and typing `proto={protocol}` will return you the capture with only the specified protocol
+###### Note: Using UDP as an example
+
+<kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExMWE1Y3B2YXN6MTUzeW91eGVwZjZ4OHl2eXgyeWcxc3BnMGIxZHBnayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/sqzCoUXlgYQ0GPauGP/giphy.gif)</kbd> 
+
+### Filter Out Protocols
+##### Alternitavely, you can return the capture excluding the specified packet using `!proto={protocol}`
+###### Note: Using TCP as an example
+<kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExMjdjdDl2cWQxaXA2aDY2eWFvemk0aDZhc2I0ZGlvd2xjcHF6Y3M1aSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VEkX5yJfRq06oFyP7j/giphy.gif)</kbd>
+
+### Filtering by any Packet Field
+##### Allows you to filter by any field of the packet (Packet No., Time, SourceAddr, DestAddr,Length)
+###### Note: Using src as example)
+<kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHZ5d3ExMXI4OWVseDlnM3h5OXl4Ymd5dWxlMDBhczZ0bmx2NzRnNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/iIuSeSO11YnVclfJoA/giphy.gif)</kbd>
+
+### Other Capture Features
+- Importing/Exporting Capture Sessions
+- `ctrl-r` for Live Pausing and Resuming Captures
+
+### Compilation
+`sh compile.sh && sudo ./sniffer`
+
+# Credits and Contributions
+Ben Wilson, Gabriel Vaner, and Howard Yang
 
 Ben's Contirbution:
 
