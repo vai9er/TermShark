@@ -21,7 +21,7 @@
 
 ### Live Captures (Left) && Scrolling (Right)
 ##### As soon as you start the program, you will see a live capture of all the incoming packets on your local network. You are also able to scroll through all of them
-<kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ3ljaGJzcmpkd2k4M2t3bHAxM2ZzYm5tMWowOHVtOXRkeXlqMXRvbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/KSHI4imtvd0QOozYP3/giphy.gif)</kbd>  <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2xncHE2NzU1cHB6YWZsc3J2Z2IwdWZxazJwNHI4cnZ6dTVmdmt0aSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/H5g6RAZgfK3mo2rNE6/giphy.gif)</kbd>
+<kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExODl3Mm1hZGNuODF6MmVkajNlcms4aWEzYXJrbGN6bW81MnpwbGE2eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/TtsNBZL55bA5UJY83j/giphy.gif)</kbd>  <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2xncHE2NzU1cHB6YWZsc3J2Z2IwdWZxazJwNHI4cnZ6dTVmdmt0aSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/H5g6RAZgfK3mo2rNE6/giphy.gif)</kbd>
 
 ### Tracerouting/TCP Streaming
 ##### Pressing `t` on a particular TCP packet will display its TCP stream i.e a list of all TCP packets sent between the two hosts
