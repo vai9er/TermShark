@@ -1,4 +1,4 @@
-![image](https://github.com/user-attachments/assets/5c39c3ba-ccb2-491c-a734-e8c12193e4b0)
+<img src="https://i.imgur.com/lfq63nt.png">
 
 ## CLI-based Wireshark Clone written in C and ncurses with all of your favourite Wireshark Features!
 ### Includes all of Your favourite WireShark Features straight from the terminal, GUI-Free!
