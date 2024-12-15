@@ -9,7 +9,7 @@
 ###### Note: This was submitted as a final project for CSCD58-Computer Networks at the University of Toronto
 
 ## Table of Contents
-- [Features](#includes-all-of-your-favourite-wireshark-features-straight-from-the-terminal-gui-free)
+- [Features](#features)
   - [Live Sniffing (Left) && Scrolling (Right)](#live-sniffing-left--scrolling-right)
   - [Tracerouting/TCP Streaming](#traceroutingtcp-streaming)
   - [Packet Inspection](#packet-inspection)
@@ -22,7 +22,7 @@
 
 
 <br />
-
+## Features
 ### Live Captures (Left) && Scrolling (Right)
 ##### As soon as you start the program, you will see a live capture of all the incoming packets on your local network. You are also able to scroll through all of them
 <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExODl3Mm1hZGNuODF6MmVkajNlcms4aWEzYXJrbGN6bW81MnpwbGE2eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/TtsNBZL55bA5UJY83j/giphy.gif)</kbd>  <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2xncHE2NzU1cHB6YWZsc3J2Z2IwdWZxazJwNHI4cnZ6dTVmdmt0aSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/H5g6RAZgfK3mo2rNE6/giphy.gif)</kbd>
