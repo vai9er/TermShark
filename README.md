@@ -33,19 +33,19 @@
 ###### (includes datagram segments for UDP and TCP)
 ![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcXJqbmQxM29tY2Q1enJ3OGhycG53bTU0OWRrcmFyNGVrOHg0YjU2cyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/oV0hXdfVMRd45UFQoo/giphy.gif)
 
-### Filtering By Protocols
+### Live Filtering By Protocols
 
 ##### Pressing `ctrl-f` and typing `proto={protocol}` will return you the capture with only the specified protocol
 ###### Note: Using UDP as an example
 
 <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExMWE1Y3B2YXN6MTUzeW91eGVwZjZ4OHl2eXgyeWcxc3BnMGIxZHBnayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/sqzCoUXlgYQ0GPauGP/giphy.gif)</kbd> 
 
-### Filter Out Protocols
+### Live Filter-Out Protocols
 ##### Alternitavely, you can return the capture excluding the specified packet using `!proto={protocol}`
 ###### Note: Using TCP as an example
 <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExMjdjdDl2cWQxaXA2aDY2eWFvemk0aDZhc2I0ZGlvd2xjcHF6Y3M1aSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VEkX5yJfRq06oFyP7j/giphy.gif)</kbd>
 
-### Filtering by Source Addresses
+### Live Filtering In/Out by Source Addresses
 ##### `[!]src={addr}`allows you to filter by valid source address within the capture
 ###### Note:! is optional
 <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHZ5d3ExMXI4OWVseDlnM3h5OXl4Ymd5dWxlMDBhczZ0bmx2NzRnNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/iIuSeSO11YnVclfJoA/giphy.gif)</kbd>
