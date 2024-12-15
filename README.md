@@ -45,9 +45,9 @@
 ###### Note: Using TCP as an example
 <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExMjdjdDl2cWQxaXA2aDY2eWFvemk0aDZhc2I0ZGlvd2xjcHF6Y3M1aSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VEkX5yJfRq06oFyP7j/giphy.gif)</kbd>
 
-### Filtering by any Packet Field
-##### Allows you to filter by any field of the packet (Packet No., Time, SourceAddr, DestAddr,Length)
-###### Note: Using src as example)
+### Filtering by Source Addresses
+##### `[!]src={addr}`allows you to filter by valid source address within the capture
+###### Note:! is optional
 <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHZ5d3ExMXI4OWVseDlnM3h5OXl4Ymd5dWxlMDBhczZ0bmx2NzRnNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/iIuSeSO11YnVclfJoA/giphy.gif)</kbd>
 
 ### Other Capture Features
