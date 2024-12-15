@@ -51,7 +51,7 @@
 <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHZ5d3ExMXI4OWVseDlnM3h5OXl4Ymd5dWxlMDBhczZ0bmx2NzRnNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/iIuSeSO11YnVclfJoA/giphy.gif)</kbd>
 
 ### Other Capture Features
-- Importing/Exporting Capture Sessions
+- `e` and `i` for Importing/Exporting Capture Sessions respectively
 - `ctrl-r` for Live Pausing and Resuming Captures
 
 ### Compilation
