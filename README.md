@@ -30,7 +30,7 @@
 
 ### Packet Inspection
 ##### Pressing `->` on any packet allows you to visualize and inspect its protocol-specific headers 
-###### (includes datagram segments for UDP and segments for TCP)
+###### (includes datagram segments for UDP and TCP)
 ![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcXJqbmQxM29tY2Q1enJ3OGhycG53bTU0OWRrcmFyNGVrOHg0YjU2cyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/oV0hXdfVMRd45UFQoo/giphy.gif)
 
 ### Filtering By Protocols
