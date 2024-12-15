@@ -1,6 +1,10 @@
 <img src="https://i.imgur.com/lfq63nt.png">
 
 ## CLI-based Network Packet Analyzer written in C and ncurses!
+
+## [Click Here for a Demonstration Video](https://www.youtube.com/watch?v=83gkPTmfcQU)
+
+
 ### Includes all of Your favourite WireShark Features straight from your terminal!
 ###### Note: This was submitted as a final project for CSCD58-Computer Networks at the University of Toronto
 
