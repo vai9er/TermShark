@@ -1,6 +1,6 @@
 <img src="https://i.imgur.com/lfq63nt.png">
 
-## CLI-based Wireshark Clone written in C and ncurses with all of your favourite Wireshark Features!
+## CLI-based Network Packet Analyzer written in C and ncurses!
 ### Includes all of Your favourite WireShark Features straight from your favourite terminal!
 ###### Note: This was submitted as a final project for CSCD58-Computer Networks at the University of Toronto
 
