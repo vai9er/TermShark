@@ -40,7 +40,7 @@
 
 ### Live Filtering By Protocols
 
-##### Pressing `ctrl-f` and typing `proto={protocol}` will return you the capture with only the specified protocol
+##### Pressing `f` and typing `proto={protocol}` will return you the capture with only the specified protocol
 ###### Note: Using UDP as an example
 
 <kbd>![GIF](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExMWE1Y3B2YXN6MTUzeW91eGVwZjZ4OHl2eXgyeWcxc3BnMGIxZHBnayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/sqzCoUXlgYQ0GPauGP/giphy.gif)</kbd> 
